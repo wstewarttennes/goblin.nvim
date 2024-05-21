@@ -1,0 +1,3 @@
+[submodule "lua/goblin/integrations/aider.nvim"]
+	path = lua/goblin/integrations/aider.nvim
+	url = https://github.com/joshuavial/aider.nvim
