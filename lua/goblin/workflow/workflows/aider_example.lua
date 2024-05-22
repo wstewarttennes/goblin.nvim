@@ -3,12 +3,11 @@ local config = {
     order = 1,
     source = "jira",
     source_options = {
-      domain = "cityflavor.atlassian.net",
-      user = "weston@cityflavor.com",
-      token =
-      "ATATT3xFfGF00IF0a4ntKc-lDfYFgIiu-iX_YTuQ1FPdgDbBo8JSQmU_Hi6lbyBh4rXTNr_gvyIQ5N5JMt-Rb_TeRgjErUq5AImKuCsWxaU7b_W18JjvZLwC_2f8XVMPfwms6mUU0wUXZX-u63OWDpElvEaa0nMmRrrh7wEOpy-MLZAljm-VNLE=4EFBE7B0",
+      domain = "**.atlassian.net",
+      user = "",
+      token = ""
       params = {
-        project = "CFDEV",
+        project = "**",
         -- sprint = "current", -- TODO
       }
     },
