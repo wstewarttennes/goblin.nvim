@@ -1,13 +1,13 @@
 # goblin.nvim
 
-Goblin.nvim is a Neovim plugin that allows you to create custom workflows with a focus on automating 
-the process of  updating codebases. This lets you to do things similar to Github Copilot Workflow, 
-where the workflow needs context and access to code beyond a single buffer.
+Goblin.nvim is a Neovim plugin that allows you to create custom, automed workflows via "steps".
+Using steps allows for taking modular actions and stringing them together to form complex workflows.
+These steps can be reused in other workflows, shared with others, etc.
+Most of my work has gone into workflows that are trying to update the buffers of a current project, 
+similar to Github Copilot Workflow, where the ai agents need guidance and context beyond a single buffer.
 
-Goblin works by following a series of steps that you define in a configuration file. Each step
-takes the input from the previous step and returns the output for the next step. Steps can be
-anything theoretically, but the default steps are data, plan, code, and push.
-
+Goblin works by following a series of steps that you define in a configuration file (.goblin.json) or in your Neovim setup. Each step
+takes the input from the previous step and returns the output for the next step. Steps can be anything. The default steps are: data, plan, code, and push.
 
 
 ### Default Configuration / Steps
@@ -18,23 +18,37 @@ anything theoretically, but the default steps are data, plan, code, and push.
          a manual entry step that lets you enter the data when the workflow runs.
          Currently Goblin supports the following input sources:
            • Jira
-           <!-- • Github -->
-           <!-- • Manual Entry -->
+           • Linear 
+           Roadmap:
+           • Github
+           • Manual Entry
 
+      Input: None
       Output: Buffer with selected data from the input source.
 
+2. Convert: Take the instructions and format them in the Goob language. Goob allows us to take command problems 
+            and express them as 
+     
 
-2. Plan: 
-
+      Input: Buffer with instructions.
       Output: Buffer with plan formatted in markdown.
 
-3. Code:
+3. Plan: Plan a step by step guide on updating a codebase. This takes in a general instruction and 
+         determines the best strategy to take to update the current project. This is accomplished
+         by 
+     
 
-      Output: Buffer with code changes formatted in markdown.
+      Input: Buffer with instructions formatted in Goob.
+      Output: Buffer with plan formatted in markdown.
 
-4. Push:
+4. Code:
 
-      Output: ??
+      Input: Buffer with plan.
+      Output: Updates files with code changes.
+
+5. Push: Performs the following steps 
+      Input: 
+      Output: Creates Github PR and pushes changes
 
 
 
@@ -205,5 +219,23 @@ A: it allows you to create workflows via easy configuration that you can use to 
    is an attempt at that abstraction.
 
 
+
+
+          data = {
+            order = 1,
+            source = "jira",
+            source_options = {
+              domain = "cityflavor.atlassian.net",
+              user = "weston@cityflavor.com",
+              token = "ATATT4xFfGF006Q8hXZFnRD430aTWKWLnHGy0TVNiUb5R5mPElQ2APpj5IGMpUOTQLKiHrShWKT1TAObdEjilbYg_3B3IrLX3jjFuv1_GFdXEXpQrw8hXQJowSR1h6S8rJ6aULHmi2CX0ZzSvJaUpJXt19dtkb2S0TuPfstEBZrIYDm6nOTyH_Y=061A49EB",
+              params = {
+                project = "CFDEV",
+                -- sprint = "current", -- TODO 
+              }
+            },
+          },
+
+
+### Goob
 
 

@@ -3,6 +3,11 @@ local Layout = require("nui.layout")
 
 local M = {}
 
+--- TODO: This should take the input of the previous step and create a "Plan".
+---       The plan should be a list of steps that the user can execute to update the codebase based on the input provided.
+---       The plan is saved to an array of steps and returned by the step to be passed to the next step.
+---       The plan is displayed in a popup window.
+
 M.start_plan = function(step, continue_workflow, update_output, input)
   local popup_one, popup_two = Popup({
     enter = true,
@@ -10,6 +15,12 @@ M.start_plan = function(step, continue_workflow, update_output, input)
   }), Popup({
     border = "double",
   })
+
+  local starting_command = [[
+    You are an AI programming assistant helping to create a plan of action based on the user's input.
+    The input is provided below.
+    The plan should be a list of steps that the user can execute to update the codebase based on the input provided.
+  ]]
 
   local layout = Layout(
     {
