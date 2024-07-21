@@ -5,7 +5,7 @@ local config = {
     source_options = {
       domain = "**.atlassian.net",
       user = "",
-      token = ""
+      token = "",
       params = {
         project = "**",
         -- sprint = "current", -- TODO
@@ -18,4 +18,7 @@ local config = {
       You are an AI programming assistant. Follow the user's requirements carefully & to the letter.
     ]]
   },
+}
+local meta = {
+  name = "Aider"
 }

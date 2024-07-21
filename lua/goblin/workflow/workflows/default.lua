@@ -104,3 +104,6 @@ local config = {
     api_key = "afljksdflaksdf",
   }
 }
+local meta = {
+  name = "Default"
+}

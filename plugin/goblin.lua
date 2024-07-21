@@ -5,10 +5,17 @@ local goblin = require("goblin")
 ---@field complete? fun(subcmd_arg_lead: string): string[] (optional) Command completions callback, taking the lead of the subcommand's arguments
 ---@type table<string, GoblinSubcommand>
 local subcommand_tbl = {
+  start = {
+    impl = function(args, opts)
+      -- Implementation (args is a list of strings)
+      goblin.openWorkflows(opts)
+    end,
+    -- This subcommand has no completions
+  },
   run = {
     impl = function(args, opts)
       -- Implementation (args is a list of strings)
-      goblin.openWorkflow()
+      goblin.startWorkflow(args)
     end,
     -- This subcommand has no completions
   },
@@ -21,7 +28,7 @@ local subcommand_tbl = {
 }
 
 ---@param opts table :h lua-guide-commands-create
-local function goblin_run(opts)
+local function goblin(opts)
   local fargs = opts.fargs
   local subcommand_key = fargs[1]
   -- Get the subcommand's arguments, if any
@@ -36,7 +43,7 @@ local function goblin_run(opts)
 end
 
 
-vim.api.nvim_create_user_command("Goblin", goblin_run, {
+vim.api.nvim_create_user_command("Goblin", goblin, {
   nargs = "+",
   desc =
   "Goblin is a plugin that allows you to create custom workflows with a focus on automating the process of updating codebases.",

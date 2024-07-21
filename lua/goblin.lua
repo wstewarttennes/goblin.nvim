@@ -28,9 +28,12 @@ end
 --
 -- public methods for the plugin
 --
+M.openWorkflows = function(options)
+  goblin.start(options)
+end
 
-M.openWorkflow = function()
-  goblin.start_workflow(options)
+M.startWorkflow = function(args)
+  goblin.start_workflow(args, options)
 end
 
 M.continueWorkflow = function()

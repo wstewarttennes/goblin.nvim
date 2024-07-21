@@ -48,7 +48,6 @@ end
 
 function Linear.get_issues(params)
   local body
-  print(params.label)
   if params.label then
     body = [[
       {

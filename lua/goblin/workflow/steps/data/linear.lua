@@ -119,9 +119,9 @@ M.run = function(step, continue_workflow, update_output, input)
     print("No issues found")
     return
   end
-
-
-
+  --
+  --
+  --
   vim.api.nvim_win_set_option(popup_two.winid, 'wrap', true)
   -- List of hashes
   local i = 0
@@ -187,7 +187,6 @@ M.run = function(step, continue_workflow, update_output, input)
 
     -- Get the current line text
     local line_text = vim.api.nvim_buf_get_lines(popup_one.bufnr, line_number, line_number + 1, false)[1]
-    print("Enter key pressed on line: " .. line_text)
     layout:unmount()
     local output_buffer = [[
         The following describes the issue that we are working on.
@@ -199,6 +198,6 @@ M.run = function(step, continue_workflow, update_output, input)
 
   vim.api.nvim_buf_set_keymap(popup_one.bufnr, 'n', '<CR>', ':lua handle_enter_key()<CR>',
     { noremap = true, silent = true })
-end -- end of if source == "jira"
+end -- end of if source == "linear"
 
 return M

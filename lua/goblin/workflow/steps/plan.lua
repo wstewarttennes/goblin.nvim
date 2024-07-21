@@ -16,11 +16,17 @@ M.start_plan = function(step, continue_workflow, update_output, input)
     border = "double",
   })
 
-  local starting_command = [[
-    You are an AI programming assistant helping to create a plan of action based on the user's input.
-    The input is provided below.
-    The plan should be a list of steps that the user can execute to update the codebase based on the input provided.
-  ]]
+  local prompt = nil
+  if step["prompt"] then
+    prompt = step["plan"]
+  else
+    prompt = [[
+      You are an AI programming assistant helping to create a plan of action based on the user's input.
+      The input is provided.
+      The plan should be a list of steps that the user can execute to update the codebase based on the input provided.
+    ]]
+  end
+
 
   local layout = Layout(
     {
