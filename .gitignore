@@ -1,4 +1,6 @@
 .aider*
-/python/venv/*
+**/venv/
+
+/goblin/venv/*
 .goblin.json
 .env

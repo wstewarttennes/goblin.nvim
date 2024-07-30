@@ -21,6 +21,7 @@ M.run = function(step, continue_workflow, update_output, input)
     return "No model specified"
   end
   -- Take input and pass to the ai along with prompt
+  -- Replace current buffer with response
 end
 
 return M
