@@ -1,6 +1,4 @@
 .aider*
 **/venv/
-
-/goblin/venv/*
 .goblin.json
 .env
