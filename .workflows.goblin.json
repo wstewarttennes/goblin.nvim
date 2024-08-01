@@ -5,7 +5,7 @@
       "server": true,
       "source": "linear",
       "source_options": {
-        "token": "lin_api_UJjq0zNuyo9QdCDbjanaGYbIgLEISKYdZ1AV9G4f",
+        "token": "$LINEAR_API_KEY",
         "params": {
           "label": "Goblin"
         }

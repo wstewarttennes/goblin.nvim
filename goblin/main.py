@@ -11,6 +11,12 @@ app = FastAPI()
 
 @app.get("/")
 async def root():
+    print("triggered")
+    return {"message": "Hello wowww"}
+
+@app.get("/trigger")
+async def trigger():
+    print("triggered")
     return {"message": "Hello wowww"}
 
 if __name__ == "__main__":
