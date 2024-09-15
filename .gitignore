@@ -2,3 +2,4 @@
 **/venv/
 .goblin.json
 .env
+.workflows.goblin.json
