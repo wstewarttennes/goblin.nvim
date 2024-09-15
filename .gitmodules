@@ -1,3 +1,6 @@
 [submodule "lua/goblin/integrations/aider.nvim"]
 	path = lua/goblin/integrations/aider.nvim
 	url = https://github.com/joshuavial/aider.nvim
+[submodule "goblin/brain/lib/avante.nvim"]
+	path = goblin/brain/lib/avante.nvim
+	url = https://github.com/yetone/avante.nvim

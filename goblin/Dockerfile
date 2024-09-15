@@ -1,19 +1,16 @@
-FROM tiangolo/uvicorn-gunicorn-fastapi:python3.11
+FROM python:3.11-bullseye
 
-# Set the working directory
-WORKDIR /app
+ENV PYTHONUNBUFFERED 1
+ADD requirements.txt /requirements.txt
+RUN apt update && apt install -y libhdf5-dev
+RUN pip install -r /requirements.txt
 
-# Copy the content of the repository to the working directory
-COPY ./ /app
+ADD . /src
+WORKDIR /src
+RUN apt-get update && apt-get install -y --no-install-recommends libmagic1 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install poppler-utils -y
 
-# Change the environment variable to the desired port
-ENV PORT=8008
+EXPOSE 8008
 
-RUN apt-get update && \
-    apt-get install -y libhdf5-dev && \
-    apt-get clean
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8008"]
 
-RUN pip install -r requirements.txt
-
-# Command to run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8008", "--reload"]

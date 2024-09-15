@@ -1,0 +1,1 @@
+{"cmd": "@dataclass\nclass DataclassState:\n    name: str\n    mood: Literal[\"happy\",\"sad\"]", "cmd_opts": "", "import_complete": 1, "terminal": "nvimterm"}
