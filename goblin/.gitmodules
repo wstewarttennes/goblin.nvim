@@ -1,0 +1,3 @@
+[submodule "brain/brain/agents/langgraphjs-examples"]
+	path = brain/brain/agents/langgraphjs-examples
+	url = https://github.com/bracesproul/langgraphjs-examples.git
