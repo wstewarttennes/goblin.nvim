@@ -5,6 +5,14 @@ local goblin = require("goblin")
 ---@field complete? fun(subcmd_arg_lead: string): string[] (optional) Command completions callback, taking the lead of the subcommand's arguments
 ---@type table<string, GoblinSubcommand>
 local subcommand_tbl = {
+  ask = {
+    impl = function(args, opts)
+      goblin.toggleStreaming(opts)
+    end,
+  },
+  toggle_streaming = {
+
+  },
   start = {
     impl = function(args, opts)
       -- Implementation (args is a list of strings)

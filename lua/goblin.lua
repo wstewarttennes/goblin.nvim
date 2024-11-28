@@ -44,4 +44,12 @@ M.train = function()
   goblin.train(options)
 end
 
+M.ask = function()
+  goblin.ask(options)
+end
+
+M.toggleStreaming = function()
+  goblin.toggle_streaming(options)
+end
+
 return M

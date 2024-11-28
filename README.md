@@ -1,4 +1,83 @@
+# GOBLIN
+
+Goblin is a helpful assistant who solves complex problems, continues to learn and adjust processes (and even it's own code) over time, and 
+has the ability to mimic most human functions (brain, eyes, ears, mouth, etc.). 
+
+Goblin is broken into separate apps based on bodily functions: brain, eyes, ears, mouth, legs, nose, arms. 
+Below we break down these various functions and how they interact with each other.
+
+## Brain
+The Brain is where most of the processing in Goblin happens. 
+In here we define various Agents with disparate responsibilities, memory functions, AI models, task workers, and more.
+
+## Ears
+The Ears allow for processing auditory information, converting that information to text, and sending this information to the Brain.
+
+## Eyes
+The Eyes allow for processing visual information, adding in additional context, and then sending the combined information to the Brain.
+
+## Mouth
+The Mouth allows for speech. Typically this involves passing text from various other parts of Goblin to the Mouth which handles output.
+
+## Arms
+Arms allow for Goblin to control physical arm robots. Because of the safety concerns here the Arms library also adds in safety layers to protect
+the user (both intentionally malicious or accidentally malicious).
+
+
+
+## Legs (TBD)
+## Nose (TBD)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # goblin.nvim
+
+
 
 Goblin.nvim is a Neovim plugin that allows you to create custom, automed workflows via "steps".
 Using steps allows for taking modular actions and stringing them together to form complex workflows.

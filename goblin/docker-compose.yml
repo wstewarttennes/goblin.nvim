@@ -1,18 +1,46 @@
-version: "3.8"
-
 services:
-  goblin:
-    build: ./
-    volumes:
-      - ./:/app  # Mount the application code to enable hot reload
-    ports:
-      - "8008:8008"  # Map the container port to the host port
+  db:
+    image: postgres:15
     environment:
-      - PORT=8008
-    env_file:
-      - .env
+      POSTGRES_DB: mydb
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - mynetwork
 
   redis:
     image: "redis:alpine"
+    command: redis-server --port 6384  # Set Redis port directly
     ports:
-      - "6383:6379"
+      - "6384:6384"
+    networks:
+      - mynetwork
+
+  goblin:
+    build: ./
+    volumes:
+      - ./:/src
+    ports:
+      - "8008:8008"
+    depends_on:
+      - db
+      - redis
+    environment:
+      - PORT=8008
+      - REDIS_URL=redis://redis:6384
+      - DJANGO_SETTINGS_MODULE=goblin.settings
+    env_file:
+      - .env
+    networks:
+      - mynetwork
+    command: daphne -b 0.0.0.0 -p 8008 goblin.asgi:application  # Direct Daphne command
+
+networks:
+  mynetwork:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  logs:

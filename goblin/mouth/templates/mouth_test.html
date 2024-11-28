@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mouth Test</title>
+</head>
+<body>
+    <h2>Text-to-Speech Audio</h2>
+    <button onclick="getAndPlayAudio()">Speak Text</button>
+    
+    <script>
+        async function getAndPlayAudio() {
+            const text = `
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+                Hi, I'm Lily. The capital of Uzbekistan is Tashkent and the president of Tajikistan is Emomali Rahmon.
+            `;
+
+            // Initialize Web Audio API
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            let currentTime = audioContext.currentTime;  // Track the current time in the audio context
+
+            try {
+                const response = await fetch(`/mouth/stream-audio?text=${encodeURIComponent(text)}`);
+                if (!response.ok) {
+                    throw new Error("Failed to fetch audio stream");
+                }
+
+                const reader = response.body.getReader();
+
+                // Read and play chunks sequentially
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    // Create a Uint8Array from the streamed chunk
+                    const audioData = new Uint8Array(value);
+
+                    // Decode and schedule the audio chunk to play after the previous one
+                    const audioBuffer = await audioContext.decodeAudioData(audioData.buffer);
+                    scheduleAudioChunk(audioBuffer);
+                }
+
+            } catch (error) {
+                console.error("Error:", error);
+            }
+
+            function scheduleAudioChunk(buffer) {
+                const source = audioContext.createBufferSource();
+                source.buffer = buffer;
+                source.connect(audioContext.destination);
+
+                // Schedule the chunk to play at the right time
+                source.start(currentTime);
+
+                // Update currentTime to account for the duration of the current chunk
+                currentTime += buffer.duration;
+            }
+        }
+    </script>
+</body>
+</html>

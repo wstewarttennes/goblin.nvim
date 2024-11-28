@@ -12,6 +12,10 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+
+# # Load environment variables from .env file
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -26,18 +30,31 @@ SECRET_KEY = 'django-insecure-nck@+)&-c^ycdkmh06-#n5h8#mcw=50sa%%98s9@t%4b+$#d9j
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "0.0.0.0",
+    "localhost"
+]
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
+    'django_celery_beat',
+    'channels',
+    # 'django_celery_results',
+    'brain',
+    'mouth',
+    'arms',
+    'eyes',
+    'ears'
 ]
 
 MIDDLEWARE = [
@@ -73,14 +90,16 @@ WSGI_APPLICATION = 'goblin.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
-
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'mydb',
+        'USER': 'myuser',
+        'PASSWORD': 'mypassword',
+        'HOST': 'db',  # matches the service name of the database in docker-compose.yml
+        'PORT': '5432',
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
@@ -99,6 +118,11 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 25
+}
 
 
 # Internationalization
@@ -146,4 +170,25 @@ CELERY_TIMEZONE = os.environ.get("CELERY_TIMEZONE", None)
 CELERY_BEAT_SCHEDULER = os.environ.get("CELERY_BEAT_SCHEDULER", None)
 CELERY_BROKER_POOL_LIMIT = 25
 
+ASGI_APPLICATION = 'goblin.asgi.application'
 
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:8008",
+    # Add any other origins you need
+]
+
+REDIS_URL = os.getenv('REDIS_URL', 'redis://redis:6384')
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [(
+                os.getenv('REDIS_HOST', 'redis'),  # hostname
+                int(os.getenv('REDIS_PORT', 6384))  # port
+            )],
+        },
+    }
+}
