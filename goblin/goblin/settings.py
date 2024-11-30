@@ -98,6 +98,14 @@ DATABASES = {
         'PASSWORD': 'mypassword',
         'HOST': 'db',  # matches the service name of the database in docker-compose.yml
         'PORT': '5432',
+    },
+    'additional_database_1': {
+        'ENGINE': os.environ.get("ADDITIONAL_DATABASE_1_ENGINE"),
+        'NAME': os.environ.get("ADDITIONAL_DATABASE_1_NAME"),
+        'USER': os.environ.get("ADDITIONAL_DATABASE_1_USER"),
+        'PASSWORD': os.environ.get("ADDITIONAL_DATABASE_1_PASSWORD"),
+        'HOST': os.environ.get("ADDITIONAL_DATABASE_1_HOST"), 
+        'PORT': os.environ.get("ADDITIONAL_DATABASE_1_PORT"),
     }
 }
 
@@ -176,7 +184,7 @@ ASGI_APPLICATION = 'goblin.asgi.application'
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:8008",
-    # Add any other origins you need
+    "http://localhost:8000",
 ]
 
 REDIS_URL = os.getenv('REDIS_URL', 'redis://redis:6384')
@@ -192,3 +200,30 @@ CHANNEL_LAYERS = {
         },
     }
 }
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'channels': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+

@@ -35,7 +35,7 @@ services:
       - .env
     networks:
       - mynetwork
-    command: daphne -b 0.0.0.0 -p 8008 goblin.asgi:application  # Direct Daphne command
+    command: python run_server.py  
 
 networks:
   mynetwork:

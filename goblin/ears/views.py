@@ -4,4 +4,5 @@ from django.shortcuts import render
 
 
 
-
+def transcribe_audio(request):
+    pass

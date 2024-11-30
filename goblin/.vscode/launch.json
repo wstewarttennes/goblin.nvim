@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "DEBUG Goblin",
+      "type": "python",
+      "request": "attach",
+      "django": true,
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}/services/ftf",
+          "remoteRoot": "/src"
+        }
+      ],
+      "port": 7913,
+      "host": "127.0.0.1",
+      "justMyCode": false
+    },
+  ]
+}
+
