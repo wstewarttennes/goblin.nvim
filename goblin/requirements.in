@@ -1,0 +1,37 @@
+# Core web framework
+Django
+channels
+channels-redis
+djangorestframework
+daphne
+
+# AI/LLM tools
+langchain
+langchain-anthropic
+langchain-openai
+langchain-community
+langgraph
+anthropic
+llama-index
+llama-index-embeddings-ollama
+openai
+elevenlabs
+
+# Database
+psycopg2
+
+# Async support
+uvicorn
+uvloop
+
+# Task queue
+celery
+django-celery-beat
+
+# Utilities
+backoff
+mysqlclient
+python-dotenv
+pydantic
+watchdog
+

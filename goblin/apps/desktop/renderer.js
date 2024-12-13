@@ -112,39 +112,75 @@ class WebSocketManager {
         this.messageHandler = new MessageHandler();
         this.connectWebSocket();
         this.setupInputHandlers();
+        this.reconnectAttempts = 0;
+        this.maxReconnectAttempts = 5;
     }
 
     connectWebSocket() {
-        const wsUrl = 'ws://localhost:8008/ws/chat/';
-        console.log('Connecting to WebSocket:', wsUrl);
+        // Get the current hostname and port
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//localhost:8011/ws/chat/`;
         
-        this.ws = new WebSocket(wsUrl);
+        console.log('Attempting WebSocket connection to:', wsUrl);
         
-        this.ws.onopen = () => {
-            console.log('WebSocket connected');
-            this.updateConnectionStatus(true);
-        };
+        if (this.ws) {
+            this.ws.close();
+        }
+        
+        try {
+            this.ws = new WebSocket(wsUrl);
+            
+            this.ws.onopen = () => {
+                console.log('WebSocket connection established');
+                this.reconnectAttempts = 0;
+                this.updateConnectionStatus(true);
+            };
+            
+            this.ws.onclose = (event) => {
+                console.log('WebSocket connection closed:', event);
+                this.updateConnectionStatus(false);
+                
+                if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                    this.reconnectAttempts++;
+                    console.log(`Reconnection attempt ${this.reconnectAttempts} of ${this.maxReconnectAttempts}`);
+                    setTimeout(() => this.connectWebSocket(), 3000 * this.reconnectAttempts);
+                }
+            };
+            
+            this.ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                this.updateConnectionStatus(false);
+            };
 
-        this.ws.onclose = () => {
-            console.log('WebSocket disconnected');
+            this.ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('Received message:', data);
+                    this.handleMessage(data);
+                } catch (error) {
+                    console.error('Error handling message:', error);
+                    this.messageHandler.displayErrorMessage('Error processing message');
+                }
+            };
+        } catch (error) {
+            console.error('Error creating WebSocket:', error);
             this.updateConnectionStatus(false);
-            // Attempt to reconnect after a delay
-            setTimeout(() => this.connectWebSocket(), 3000);
-        };
+        }
+    }
 
-        this.ws.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                this.handleMessage(data);
-            } catch (error) {
-                console.error('Error handling message:', error);
-                this.messageHandler.displayErrorMessage('Error processing message');
+    updateConnectionStatus(isConnected) {
+        const statusIndicator = document.getElementById('status-indicator');
+        const statusText = document.getElementById('status-text');
+        
+        if (statusIndicator && statusText) {
+            if (isConnected) {
+                statusIndicator.classList.add('status-connected');
+                statusText.textContent = 'Connected';
+            } else {
+                statusIndicator.classList.remove('status-connected');
+                statusText.textContent = 'Disconnected';
             }
-        };
-
-        this.ws.onerror = (error) => {
-            console.error('WebSocket error:', error);
-        };
+        }
     }
 
     handleMessage(data) {
@@ -188,25 +224,101 @@ class WebSocketManager {
         };
     }
 
-    updateConnectionStatus(isConnected) {
-        const statusIndicator = document.getElementById('status-indicator');
-        const statusText = document.getElementById('status-text');
+}
+
+class VoiceManager {
+    constructor(wsManager) {
+        this.wsManager = wsManager;
+        this.recognition = null;
+        this.isListening = false;
+        this.voiceButton = document.getElementById('voice-toggle');
+        this.voiceIcon = document.getElementById('voice-icon');
+        this.voiceStatus = document.getElementById('voice-status');
         
-        if (isConnected) {
-            statusIndicator.classList.add('status-connected');
-            statusText.textContent = 'Connected';
+        // Check if browser supports speech recognition
+        if ('webkitSpeechRecognition' in window) {
+            this.setupSpeechRecognition();
         } else {
-            statusIndicator.classList.remove('status-connected');
-            statusText.textContent = 'Disconnected';
+            console.warn('Speech recognition not supported');
+            this.voiceButton.style.display = 'none';
+        }
+    }
+
+    setupSpeechRecognition() {
+        this.recognition = new webkitSpeechRecognition();
+        this.recognition.continuous = false;
+        this.recognition.interimResults = false;
+        this.recognition.lang = 'en-US';
+
+        this.recognition.onstart = () => {
+            this.isListening = true;
+            this.voiceButton.classList.add('active', 'speaking');
+            this.voiceStatus.textContent = 'Listening...';
+            console.log('Speech recognition started');
+        };
+
+        this.recognition.onend = () => {
+            this.isListening = false;
+            this.voiceButton.classList.remove('active', 'speaking');
+            this.voiceStatus.textContent = 'Click to start';
+            console.log('Speech recognition ended');
+        };
+
+        this.recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            console.log('Recognized:', transcript);
+            if (transcript.trim()) {
+                // Update input field with transcript
+                const messageInput = document.getElementById('message-input');
+                messageInput.value = transcript;
+                
+                // Optionally, send immediately
+                if (this.wsManager.ws?.readyState === WebSocket.OPEN) {
+                    this.wsManager.ws.send(JSON.stringify({
+                        message: transcript,
+                        provider: 'anthropic'
+                    }));
+                    messageInput.value = ''; // Clear after sending
+                }
+            }
+        };
+
+        this.recognition.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+            this.isListening = false;
+            this.voiceButton.classList.remove('active', 'speaking');
+            this.voiceStatus.textContent = 'Error. Click to retry';
+        };
+    }
+
+    toggleListening() {
+        if (!this.recognition) {
+            console.warn('Speech recognition not initialized');
+            return;
+        }
+
+        if (this.isListening) {
+            this.recognition.stop();
+        } else {
+            this.recognition.start();
         }
     }
 }
 
 class ChatApplication {
     constructor() {
-        // Initialize both managers
+        // Initialize managers
         this.themeManager = new ThemeManager();
         this.wsManager = new WebSocketManager();
+        this.voiceManager = new VoiceManager(this.wsManager);
+        
+        // Set up voice control event listener
+        const voiceToggle = document.getElementById('voice-toggle');
+        if (voiceToggle) {
+            voiceToggle.addEventListener('click', () => {
+                this.voiceManager.toggleListening();
+            });
+        }
     }
 }
 

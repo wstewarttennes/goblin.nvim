@@ -29,7 +29,7 @@ def start_server():
     process = subprocess.Popen([
         'daphne',
         '-b', '0.0.0.0',
-        '-p', '8008',
+        '-p', '8011',
         'goblin.asgi:application'
     ])
     return process
@@ -44,9 +44,7 @@ if __name__ == "__main__":
     
     # Watch both your app directories and the Django project directory
     paths_to_watch = [
-        './goblin',  # Your Django project directory
-        './ears',    # Your app directory
-        # Add other directories you want to watch
+        '.'
     ]
 
     for path in paths_to_watch:

@@ -1,6 +1,8 @@
 # consumers.py
 import json
 import asyncio
+import backoff
+from anthropic import APIStatusError
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from brain.models import (
@@ -243,3 +245,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'type': 'error',
             'message': message
         }))
+
+
+

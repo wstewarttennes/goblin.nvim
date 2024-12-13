@@ -23,12 +23,12 @@ services:
     volumes:
       - ./:/src
     ports:
-      - "8008:8008"
+      - "8011:8011"
     depends_on:
       - db
       - redis
     environment:
-      - PORT=8008
+      - PORT=8011
       - REDIS_URL=redis://redis:6384
       - DJANGO_SETTINGS_MODULE=goblin.settings
     env_file:

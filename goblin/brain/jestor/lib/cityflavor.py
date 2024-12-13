@@ -1,138 +1,105 @@
 import logging
+import re
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime, timedelta
 from brain.jestor.lib.database import QueryResult, DatabaseType
 
 logger = logging.getLogger(__name__)
 
-
 @dataclass
 class QueryContext:
-    """
-    Stores context about what the query is trying to achieve, helping the AI
-    understand how to structure complex queries and combine data effectively.
-    """
+    """Stores context about what the query is trying to achieve"""
     main_entity: str  # e.g., 'orders', 'vendors', 'properties'
-    related_entities: List[str]  # related tables needed
+    related_entities: List[str]
     time_range: Optional[Dict[str, datetime]] = None
     filters: Dict[str, Any] = None
     metrics: List[str] = None
-
+    vendor_name: Optional[str] = None
 
 class CityFlavorQueryTool:
-    """
-    Provides a flexible interface for AI to query the database system with
-    built-in understanding of the data model and relationships.
-    """
     def __init__(self, db_manager):
         self.db_manager = db_manager
         self._setup_entity_relationships()
         
-        # Validate entity map
-        required_entities = {'Orders', 'Vendors', 'Locations'}
+        required_entities = {'Orders', 'Vendors'}
         actual_entities = set(self.entity_map.keys())
         missing_entities = required_entities - actual_entities
         
         if missing_entities:
-            logger.error(f"Missing required entities in entity map: {missing_entities}")
-            raise ValueError(f"Entity map is missing required entities: {missing_entities}")
+            logger.error(f"Missing required entities: {missing_entities}")
+            raise ValueError(f"Missing required entities: {missing_entities}")
             
-        logger.info(f"CityFlavorQueryTool initialized with entities: {actual_entities}")
+        logger.info(f"CityFlavorQueryTool initialized with: {actual_entities}")
+
     def _setup_entity_relationships(self):
-        """Define the data model relationships for the AI to understand"""
+        """Define the core fields and relationships needed for analysis"""
         self.entity_map = {
             'Orders': {
-                'table': 'main_orders',
-                'key_fields': ['id', 'created_at', 'total_amount', 'shift_id', 'location_id', 'reference_id', 'customer_id', 'state'],
+                'table': 'main_order',
+                'essential_fields': ['id', 'created_at_dt', 'total_money_amount', 'state'],
+                'optional_fields': ['shift_id', 'location_id', 'reference_id', 'customer_id'],
                 'relationships': {
-                    'shift': ('main_shifts', 'shift_id', 'id'),
-                    'items': ('main_orderitem', 'id', 'order_id'),
-                    'vendor': ('main_foodtruck', 'shift__truck_id', 'id'),
-                    'location': ('main_location', 'shift__location_id', 'id'),
-                    'taxes': ('main_tax', 'id', 'order_id'),
-                    'tenders': ('main_tender', 'id', 'order_id'),
-                    'refunds': ('main_refund', 'id', 'order_id')
+                    'vendor': ('main_foodtruck', 'shift__truck_id', 'id', ['name']),
+                    'location': ('main_location', 'shift__location_id', 'id', ['name']),
                 },
-                'time_field': 'created_at'
+                'time_field': 'created_at_dt'
             },
             'Vendors': {
                 'table': 'main_foodtruck',
-                'key_fields': ['id', 'name', 'contact_email', 'contact_phone', 'description', 'area_id', 'primary_cuisine'],
+                'essential_fields': ['id', 'name', 'primary_cuisine'],
+                'optional_fields': ['email', 'phone', 'description', 'area_id'],
                 'relationships': {
-                    'shifts': ('main_shifts', 'id', 'truck_id'),
-                    'orders': ('main_orders', 'shift__truck_id', 'id'), 
-                    'locations': ('main_location', 'shift__location_id', 'id'),
-                    'menus': ('main_menu', 'id', 'truck_id'),
-                    'area': ('main_area', 'area_id', 'id')
+                    'area': ('main_area', 'area_id', 'id', ['name'])
                 }
             },
-            'Locations': {
-                'table': 'main_location', 
-                'key_fields': ['id', 'name', 'event_planner_id', 'area_id', 'description', 'street_number_and_name'],
-                'relationships': {
-                    'event_planner': ('main_eventplanner', 'event_planner_id', 'id'),
-                    'area': ('main_area', 'area_id', 'id'),
-                    'shifts': ('main_shifts', 'id', 'location_id'),
-                    'vendors': ('main_foodtruck', 'shift__location_id', 'truck_id')
-                }
-            },
-            'Shifts': {
-                'table': 'main_shifts',
-                'key_fields': ['id', 'day', 'start_time', 'end_time', 'truck_id', 'location_id', 'confirmed_shift'],
-                'relationships': {
-                    'vendor': ('main_foodtruck', 'truck_id', 'id'),
-                    'location': ('main_location', 'location_id', 'id'), 
-                    'orders': ('main_orders', 'id', 'shift_id'),
-                    'payments': ('main_payment', 'id', 'shift_id')
-                },
-                'time_field': 'day'
-            },
-            'OrderItems': {
-                'table': 'main_orderitem',
-                'key_fields': ['id', 'name', 'quantity', 'base_price_money_amount', 'total_money_amount'],
-                'relationships': {
-                    'order': ('main_orders', 'order_id', 'id'),
-                    'category': ('main_orderitemcategory', 'order_item_category_id', 'id'),
-                    'modifiers': ('main_modifier', 'id', 'orderitem_id'),
-                    'taxes': ('main_tax', 'id', 'orderitem_id')
-                }
-            }
+            # 'Locations': {
+            #     'table': 'main_location',
+            #     'essential_fields': ['id', 'name', 'street_number_and_name'],
+            #     'optional_fields': ['event_planner_id', 'area_id', 'description'],
+            #     'relationships': {
+            #         'area': ('main_area', 'area_id', 'id', ['name'])
+            #     }
+            # }
         }
-    async def analyze_data(self, query_description: str) -> Dict[str, Any]:
-        """
-        Main entry point for AI to analyze data based on natural language description.
-        Automatically determines appropriate query structure and executes it.
-        """
-        # Parse the query description to understand what data is needed
-        context = self._parse_query_context(query_description)
+
+    def _parse_time_reference(self, text: str) -> Optional[Dict[str, datetime]]:
+        """Parse time references from natural language"""
+        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         
-        # Build and execute the appropriate query
-        query, parameters = self._build_dynamic_query(context)
-        
-        result = await self.db_manager.execute_query(
-            query=query,
-            parameters=parameters,
-            db_type=DatabaseType.DB1  # Or appropriate database
-        )
-        
-        # Format the results in a way that's easy for the AI to interpret
-        return self._format_results_for_ai(result, context)
+        if 'yesterday' in text.lower():
+            yesterday = today - timedelta(days=1)
+            return {
+                'start': yesterday,
+                'end': today
+            }
+        elif 'today' in text.lower():
+            return {
+                'start': today,
+                'end': today + timedelta(days=1)
+            }
+        return None
+
+    def _extract_vendor_name(self, text: str) -> Optional[str]:
+        """Extract vendor name from the query text."""
+        # Patterns to identify vendor names
+        patterns = [
+            r'how many orders did ([\w\s]+)',  # E.g., "how many orders did Akita Sushi"
+            r'orders for ([\w\s]+)',          # E.g., "orders for Akita Sushi"
+            r'([\w\s]+) orders yesterday',    # E.g., "Akita Sushi orders yesterday"
+        ]
+
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                return match.group(1).strip()
+        return None
 
     def _parse_query_context(self, description: str) -> QueryContext:
-        """
-        Analyze the natural language query to determine what data is needed.
-        Ensures case-matching with entity map keys.
-        """
-        context = QueryContext(
-            main_entity='',
-            related_entities=[]
-        )
-        
-        # Convert description to lowercase for consistent matching
+        """Parse the query and determine relevant entities and fields"""
         description_lower = description.lower()
         
-        # Map common terms to their proper entity names
+        # Map common terms to entities
         entity_mappings = {
             'vendor': 'Vendors',
             'vendors': 'Vendors',
@@ -140,94 +107,171 @@ class CityFlavorQueryTool:
             'food trucks': 'Vendors',
             'order': 'Orders',
             'orders': 'Orders',
+            'sales': 'Orders',
+            'revenue': 'Orders',
             'location': 'Locations',
             'locations': 'Locations',
             'property': 'Locations',
             'properties': 'Locations'
         }
         
-        # Find the main entity being queried
+        main_entity = None
+        related_entities = []
+        
+        # Find main entity and related entities
         for term, entity in entity_mappings.items():
             if term in description_lower:
-                context.main_entity = entity
-                # Look for related entities
-                for other_term, other_entity in entity_mappings.items():
-                    if other_term in description_lower and other_entity != entity:
-                        context.related_entities.append(other_entity)
-                break
+                if main_entity is None:
+                    main_entity = entity
+                elif entity not in related_entities and entity != main_entity:
+                    related_entities.append(entity)
         
-        # If no entity was found, default to Orders
-        if not context.main_entity:
-            context.main_entity = 'Orders'
+        # Default to Orders if no entity found
+        if not main_entity:
+            main_entity = 'Orders'
             
-        logger.debug(f"Parsed query context: Main entity: {context.main_entity}, Related entities: {context.related_entities}")
+        # Extract vendor name and time range
+        vendor_name = self._extract_vendor_name(description)
+        time_range = self._parse_time_reference(description)
         
-        return context
+        return QueryContext(
+            main_entity=main_entity,
+            related_entities=related_entities,
+            time_range=time_range,
+            vendor_name=vendor_name,
+            metrics=['sales'] if 'sales' in description_lower else ['orders']
+        )
 
-    def _build_dynamic_query(self, context: QueryContext) -> tuple[str, List[Any]]:
-        """
-        Construct a SQL query based on the analysis context.
-        This method handles joining related tables and applying filters.
-        """
-        entity_info = self.entity_map[context.main_entity]
+    def _build_dynamic_query(self, context: QueryContext) -> Tuple[str, List[Any]]:
+        """Build optimized SQL query for Akita Sushi 1 order analysis."""
+        entity_info = self.entity_map['Orders']  # We're focused on orders
         select_fields = []
         joins = []
+        where_clauses = []
         parameters = []
-        
-        # Add main entity fields
-        for field in entity_info['key_fields']:
-            select_fields.append(f"{entity_info['table']}.{field}")
-        
-        # Add related entity joins
-        for related in context.related_entities:
-            relation = entity_info['relationships'].get(related)
-            if relation:
-                table, key = relation
-                joins.append(f"LEFT JOIN {table} ON {key}")
-                
-        # Build the query
+
+        # Essential fields from the Orders table
+        table_alias = 'main'
+        for field in entity_info['essential_fields']:
+            select_fields.append(f"{table_alias}.{field}")
+
+        # Add joins for vendor and location (optional but useful)
+        joins.append("LEFT JOIN main_foodtruck ON main.vendor_id = main_foodtruck.id")
+        select_fields.append("main_foodtruck.name AS vendor_name")
+
+        # Add filter for Akita Sushi 1 by name
+        if context.vendor_name:
+            where_clauses.append("LOWER(main_foodtruck.name) = LOWER(%s)")
+            parameters.append(context.vendor_name)
+
+        # Add time range filter for 'yesterday'
+        if context.time_range:
+            where_clauses.append(f"{table_alias}.{entity_info['time_field']} >= %s")
+            where_clauses.append(f"{table_alias}.{entity_info['time_field']} < %s")
+            parameters.extend([context.time_range['start'], context.time_range['end']])
+
+        # Construct the final SQL query
         query = f"""
         SELECT {', '.join(select_fields)}
-        FROM {entity_info['table']}
+        FROM {entity_info['table']} AS {table_alias}
         {' '.join(joins)}
+        {'WHERE ' + ' AND '.join(where_clauses) if where_clauses else ''}
+        ORDER BY {entity_info.get('time_field', 'id')} DESC
+        LIMIT 50
         """
-        
+
         return query, parameters
 
-    def _format_results_for_ai(
-        self, 
-        query_result: QueryResult, 
-        context: QueryContext
-    ) -> Dict[str, Any]:
-        """
-        Format the database results in a way that's easy for the AI to understand
-        and explain to users.
-        """
+    def _format_results_for_ai(self, query_result: QueryResult, context: QueryContext) -> Dict[str, Any]:
+        """Format results with summaries and statistics"""
         if not query_result.is_success:
             return {
                 'status': 'error',
-                'message': query_result.error,
-                'context': vars(context)
+                'message': query_result.error
             }
+        
+        data = query_result.data
+        if not data:
+            return {
+                'status': 'success',
+                'message': f"No orders found for {context.vendor_name} on the given date.",
+                'summary': {
+                    'total_records': 0,
+                    'total_sales': 0,
+                    'average_order': 0.0,
+                    'vendor_name': context.vendor_name,
+                    'time_range': {
+                        'start': context.time_range['start'].isoformat() if context.time_range else None,
+                        'end': context.time_range['end'].isoformat() if context.time_range else None
+                    }
+                }
+            }
+        
+        # Generate appropriate summary based on entity type
+        summary = self._generate_entity_summary(data, context)
         
         return {
             'status': 'success',
-            'data': query_result.data,
-            'summary': self._generate_data_summary(query_result.data),
-            'context': vars(context),
-            'metadata': {
-                'row_count': query_result.row_count,
-                'queried_entities': [context.main_entity] + context.related_entities
-            }
+            'data': data,
+            'summary': summary,
+            'message': f"Analysis completed for {context.main_entity}"
         }
 
-    def _generate_data_summary(self, data: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Create a summary of the data for the AI to use in explanations"""
+    def _generate_entity_summary(self, data: List[Dict[str, Any]], context: QueryContext) -> Dict[str, Any]:
+
+        """Generate entity-specific summaries"""
         if not data:
-            return {'message': 'No data found'}
-            
-        return {
-            'total_records': len(data),
-            'sample_fields': list(data[0].keys()) if data else [],
-            'has_more': len(data) >= 1000  # Indicate if results might be truncated
-        }
+            return {
+                "total_records": 0,
+                "total_sales": 0,
+                "average_order": 0.0,
+                "vendor_name": context.vendor_name,
+                "time_range": {
+                    "start": context.time_range['start'].isoformat() if context.time_range else None,
+                    "end": context.time_range['end'].isoformat() if context.time_range else None
+                }
+            }
+
+        summary = {"total_records": len(data)}
+
+        if context.main_entity == 'Orders':
+            total_amount = sum(float(record['total_money_amount']) for record in data if record.get('total_money_amount'))
+            summary.update({
+                "total_sales": round(total_amount, 2),
+                "average_order": round(total_amount / len(data), 2) if data else 0,
+                "vendor_name": context.vendor_name,
+                "time_range": {
+                    "start": context.time_range['start'].isoformat() if context.time_range else None,
+                    "end": context.time_range['end'].isoformat() if context.time_range else None
+                }
+            })
+
+        elif context.main_entity == 'Vendors':
+            cuisines = {}
+            for record in data:
+                cuisine = record.get('primary_cuisine')
+                if cuisine:
+                    cuisines[cuisine] = cuisines.get(cuisine, 0) + 1
+            summary["cuisine_distribution"] = cuisines
+
+        elif context.main_entity == 'Locations':
+            active_locations = len(data)
+            summary["active_locations"] = active_locations
+
+        return summary
+
+    async def analyze_data(self, query_description: str) -> Dict[str, Any]:
+        try:
+            context = self._parse_query_context(query_description)
+            query, parameters = self._build_dynamic_query(context)
+
+            result = await self.db_manager.execute_query(
+                query=query,
+                parameters=parameters,
+                db_type=DatabaseType.DEFAULT
+            )
+
+            # Always format and return the result
+            return self._format_results_for_ai(result, context)
+        except Exception as e:
+            return {'status': 'error', 'message': f"Failed to analyze data: {str(e)}"}

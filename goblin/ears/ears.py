@@ -10,7 +10,7 @@ import speech_recognition as sr
 import requests
 
 def send_to_django(text):
-    url = f"http://0.0.0.0:8008/ears"
+    url = f"http://0.0.0.0:8011/ears"
     data = {'text': text}
     requests.post(url, data=data)
 

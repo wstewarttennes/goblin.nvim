@@ -17,4 +17,4 @@ RUN pip install -r /requirements.txt
 ADD . /src
 WORKDIR /src
 
-EXPOSE 8008
+EXPOSE 8011

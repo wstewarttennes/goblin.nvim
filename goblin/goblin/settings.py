@@ -183,7 +183,7 @@ ASGI_APPLICATION = 'goblin.asgi.application'
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "http://localhost:8008",
+    "http://localhost:8011",
     "http://localhost:8000",
 ]
 

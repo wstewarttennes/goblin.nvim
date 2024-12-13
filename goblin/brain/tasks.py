@@ -1,7 +1,6 @@
 from brain.agents.developer_one.developer_one import DeveloperOne
 from celery import shared_task
 from brain.helpers.linear_api import LinearApi
-import whisper
 import numpy as np
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
@@ -39,35 +38,3 @@ def ping_brain():
         ticket_description = issue["description"] 
         agent.run()
 
-
-
-
-@shared_task
-def process_audio_chunk(chunk_id):
-    from .models import AudioChunk
-    
-    chunk = AudioChunk.objects.get(id=chunk_id)
-    model = whisper.load_model(chunk.session.model_name)
-    
-    with tempfile.NamedTemporaryFile(suffix='.wav', delete=True) as temp_file:
-        temp_file.write(chunk.audio_data)
-        temp_file.flush()
-        
-        result = model.transcribe(temp_file.name)
-        
-        chunk.transcription = result['text']
-        chunk.processed = True
-        chunk.save()
-        
-        # Send result via WebSocket
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f'transcription_{chunk.session.session_id}',
-            {
-                'type': 'transcription_message',
-                'message': {
-                    'chunk_number': chunk.chunk_number,
-                    'transcription': result['text']
-                }
-            }
-        )

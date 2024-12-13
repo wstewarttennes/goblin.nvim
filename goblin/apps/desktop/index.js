@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -17,7 +17,9 @@ const windowConfig = {
         // Enable remote module for easier IPC if needed later
         enableRemoteModule: true,
         // Disable web security in development only
-        webSecurity: !isDev
+        webSecurity: !isDev,
+        allowRunningInsecureContent: true,
+        experimentalFeatures: true
     },
     // Window styling
     alwaysOnTop: true,
@@ -25,6 +27,35 @@ const windowConfig = {
     backgroundColor: '#1a1a1a', // Match your dark theme to prevent white flash
     show: false // Don't show until ready
 };
+
+
+// Add these to your existing main.js
+function setupVoiceIPC() {
+  let recognitionProcess = null;
+
+  ipcMain.handle('voice:start-listening', async () => {
+    if (mainWindow) {
+      // Notify renderer that we're starting to listen
+      mainWindow.webContents.send('voice:status', { isListening: true });
+    }
+  });
+
+  ipcMain.handle('voice:stop-listening', async () => {
+    if (mainWindow) {
+      mainWindow.webContents.send('voice:status', { isListening: false });
+    }
+  });
+
+  ipcMain.handle('voice:get-devices', async () => {
+    if (mainWindow) {
+      const devices = await mainWindow.webContents.executeJavaScript(`
+        navigator.mediaDevices.enumerateDevices()
+      `);
+      return devices;
+    }
+    return [];
+  });
+}
 
 function createWindow() {
     // Create browser window with our config
@@ -49,6 +80,18 @@ function createWindow() {
         });
     }
 
+    setupVoiceIPC();
+
+    // Add permissions for microphone
+    mainWindow.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+        const allowedPermissions = ['media', 'microphone'];
+        if (allowedPermissions.includes(permission)) {
+        callback(true);
+        } else {
+        callback(false);
+        }
+    });
+
     // Handle window closed event
     mainWindow.on('closed', () => {
         mainWindow = null;
@@ -58,6 +101,7 @@ function createWindow() {
     mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
         console.error('Failed to load:', errorCode, errorDescription);
     });
+
 }
 
 // Create window when Electron is ready

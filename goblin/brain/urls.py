@@ -5,7 +5,6 @@ from rest_framework import routers
 router = routers.DefaultRouter()
 router.register(r'users', views.UserViewSet, basename='users')
 router.register(r'groups', views.GroupViewSet, basename='groups')
-router.register(r'transcription', views.TranscriptionViewSet, basename='transcription')
 
 
 urlpatterns = [

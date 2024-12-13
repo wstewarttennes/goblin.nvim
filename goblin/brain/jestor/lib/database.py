@@ -32,9 +32,9 @@ class DatabaseType(Enum):
     specific purposes in the naming.
     """
     DEFAULT = ("default", "Django's primary database connection")
-    DB1 = ("additional_db_1", "Additional database connection #1")
-    DB2 = ("additional_db_2", "Additional database connection #2")
-    DB3 = ("additional_db_3", "Additional database connection #3")
+    DB1 = ("additional_database_1", "Additional database connection #1")
+    DB2 = ("additional_database_2", "Additional database connection #2")
+    DB3 = ("additional_database_3", "Additional database connection #3")
 
     def __init__(self, value: str, description: str):
         self._value_ = value
@@ -45,17 +45,31 @@ class DatabaseType(Enum):
         """Returns the actual connection name used in Django settings"""
         return self._value_
 
+
 class DatabaseManager:
     """
-    Manages multiple database connections with a generalized naming scheme.
-    Provides a consistent interface for database operations while allowing
-    flexible use of additional databases.
+    Manages database operations without storing persistent connections.
     """
-    
     def __init__(self):
-        self._connections = {}
-        self._initialize_connections()
+        pass  # No need to initialize connections here
     
+    @contextmanager
+    def get_connection(self, db_type: DatabaseType = DatabaseType.DEFAULT):
+        """
+        Context manager for safely handling database connections.
+        Obtains a fresh connection for the current thread.
+        """
+        try:
+            if db_type.connection_name not in connections.databases:
+                raise ValueError(f"No configuration found for database: {db_type.connection_name}")
+            
+            # Get the connection for the current thread
+            connection = connections[db_type.connection_name]
+            yield connection
+        except Exception as e:
+            logger.error(f"Database connection error for {db_type.connection_name}: {str(e)}")
+            raise 
+
     def _initialize_connections(self):
         """
         Set up database connections based on Django settings.
@@ -91,24 +105,6 @@ class DatabaseManager:
             for db_type in DatabaseType
         }
 
-    @contextmanager
-    def get_connection(self, db_type: DatabaseType = DatabaseType.DEFAULT):
-        """
-        Context manager for safely handling database connections.
-        Ensures proper connection handling and error logging.
-        """
-        try:
-            connection = self._connections.get(db_type)
-            if not connection:
-                raise ValueError(
-                    f"No connection found for database: {db_type.connection_name}"
-                )
-            yield connection
-        except Exception as e:
-            logger.error(
-                f"Database connection error for {db_type.connection_name}: {str(e)}"
-            )
-            raise
 
     async def execute_query(
         self,
@@ -118,27 +114,21 @@ class DatabaseManager:
     ) -> QueryResult:
         """
         Execute a query on the specified database connection.
-        
-        Args:
-            query: SQL query to execute
-            parameters: Query parameters for parameterized queries
-            db_type: Which database connection to use
-            
-        Returns:
-            QueryResult containing the results and execution metadata
         """
         try:
             if not query.strip().upper().startswith('SELECT'):
                 raise ValueError("Only SELECT queries are allowed")
             
-            results = await self._execute_read_query(query, parameters, db_type)
+            # Wrap the synchronous method with database_sync_to_async
+            results = await database_sync_to_async(self._execute_read_query)(
+                query, parameters, db_type
+            )
             return QueryResult(
                 status="success",
                 data=results,
                 row_count=len(results),
                 error=None
             )
-            
         except Exception as e:
             error_msg = f"Query execution error on {db_type.connection_name}: {str(e)}"
             logger.error(error_msg)
@@ -149,9 +139,10 @@ class DatabaseManager:
                 error=error_msg
             )
 
-    @database_sync_to_async
     def _execute_read_query(self, query, parameters=None, db_type=DatabaseType.DEFAULT):
         with self.get_connection(db_type) as conn:
             with conn.cursor() as cursor:
                 cursor.execute(query, parameters)
-                return cursor.fetchall()
+                columns = [col[0] for col in cursor.description]
+                data = [dict(zip(columns, row)) for row in cursor.fetchall()]
+                return data
