@@ -29,8 +29,7 @@ The Eyes allow for processing visual information, adding in additional context, 
 The Mouth allows for speech. Typically this involves passing text from various other parts of Goblin to the Mouth which handles output.
 
 ## Arms
-Arms allow for Goblin to control physical arm robots. Because of the safety concerns here the Arms library also adds in safety layers to protect
-the user (both intentionally malicious or accidentally malicious).
+Arms allow for Goblin to control physical robots. Because of the safety concerns here the Arms library also adds in safety layers to protect the user (both intentionally malicious or accidentally malicious).
 
 
 

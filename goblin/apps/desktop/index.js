@@ -1,6 +1,13 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
+const { ScreenshotService } = require('./src/services/screenshotService')
 const path = require('path');
+
 const isDev = process.env.NODE_ENV === 'development';
+const BACKEND_URL = isDev 
+  ? 'ws://localhost:8011' 
+  : 'wss://api.hellogobl.in';
+
+let screenshotService;
 
 // Store the main window as a global reference to prevent garbage collection
 let mainWindow;
@@ -12,24 +19,56 @@ const windowConfig = {
     minWidth: 300, // Prevent window from becoming too small
     minHeight: 400,
     webPreferences: {
-        nodeIntegration: true,
-        contextIsolation: false,
+        nodeIntegration: false,
+        contextIsolation: true,
         // Enable remote module for easier IPC if needed later
         enableRemoteModule: true,
         // Disable web security in development only
         webSecurity: !isDev,
         allowRunningInsecureContent: true,
-        experimentalFeatures: true
+        experimentalFeatures: true,
+        preload: path.join(__dirname, 'preload.js')
     },
     // Window styling
     alwaysOnTop: true,
     frame: true, // Show window frame
     backgroundColor: '#1a1a1a', // Match your dark theme to prevent white flash
-    show: false // Don't show until ready
+    show: false, // Don't show until ready
 };
 
+function initScreenshotService() {
+    if (!screenshotService) {
+        screenshotService = new ScreenshotService(`${BACKEND_URL}/ws/eyes/screenshots`);
+        console.log('Screenshot service initialized');
+    }
+}
 
-// Add these to your existing main.js
+// Handle settings updates
+ipcMain.on('settings:updated', (event, settings) => {
+    console.log('Settings updated:', settings);
+    
+    if (!screenshotService) {
+        initScreenshotService();
+    }
+
+    if (settings.screenshots) {
+        screenshotService.startCapturing(settings.project);
+    } else {
+        screenshotService.stopCapturing();
+    }
+});
+
+ipcMain.on('project:changed', (event, project) => {
+    if (screenshotService) {
+        screenshotService.currentProject = project;
+    }
+});
+
+
+
+
+
+// Voice Functions
 function setupVoiceIPC() {
   let recognitionProcess = null;
 
@@ -84,11 +123,18 @@ function createWindow() {
 
     // Add permissions for microphone
     mainWindow.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
-        const allowedPermissions = ['media', 'microphone'];
+        const allowedPermissions = [
+            'media',
+            'microphone',
+            'display-capture',  // For modern screen capture API
+            'desktopCapturer'   // For Electron's desktopCapturer
+        ];
+
         if (allowedPermissions.includes(permission)) {
-        callback(true);
+            callback(true);
         } else {
-        callback(false);
+            console.log('Permission denied:', permission);
+            callback(false);
         }
     });
 
@@ -106,6 +152,7 @@ function createWindow() {
 
 // Create window when Electron is ready
 app.whenReady().then(() => {
+    initScreenshotService();
     createWindow();
 
     // Handle MacOS activation
@@ -131,4 +178,11 @@ process.on('uncaughtException', (error) => {
 // Handle any unhandled promise rejections
 process.on('unhandledRejection', (error) => {
     console.error('Unhandled rejection:', error);
+});
+
+// Clean up on app quit
+app.on('before-quit', () => {
+    if (screenshotService) {
+        screenshotService.stopCapturing();
+    }
 });

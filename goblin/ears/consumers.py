@@ -63,7 +63,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             self._register_default_tools()
 
             # Initialize AI provider based on configuration
-            provider_name = os.environ.get("AI_PROVIDER", "openai")
+            provider_name = os.environ.get("AI_PROVIDER", "anthropic")
 
             if provider_name.lower() == "anthropic":
                 self.provider = anthropic.AnthropicProvider()

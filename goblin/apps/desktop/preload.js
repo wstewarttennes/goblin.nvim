@@ -1,4 +1,30 @@
-const { contextBridge, ipcRenderer } = require('electron/renderer')
+const { contextBridge, ipcRenderer } = require('electron');
+
+// Expose protected methods that allow the renderer process to use
+// the ipcRenderer without exposing the entire object
+contextBridge.exposeInMainWorld(
+    'electron',
+    {
+        // Environment variables
+        env: {
+            NODE_ENV: process.env.NODE_ENV
+        },
+        // IPC communication
+        send: (channel, data) => {
+            // Whitelist channels
+            const validChannels = ['settings:updated', 'project:changed', 'screenshot:start', 'screenshot:stop'];
+            if (validChannels.includes(channel)) {
+                ipcRenderer.send(channel, data);
+            }
+        },
+        receive: (channel, func) => {
+            const validChannels = ['voice:status'];
+            if (validChannels.includes(channel)) {
+                ipcRenderer.on(channel, (event, ...args) => func(...args));
+            }
+        }
+    }
+);
 
 contextBridge.exposeInMainWorld('darkMode', {
   toggle: () => ipcRenderer.invoke('dark-mode:toggle'),
@@ -14,4 +40,3 @@ contextBridge.exposeInMainWorld('voiceChat', {
   setOutputDevice: (deviceId) => ipcRenderer.invoke('voice:set-output-device'),
   getDevices: () => ipcRenderer.invoke('voice:get-devices')
 });
-
