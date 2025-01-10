@@ -29,7 +29,7 @@ tmux send-keys -t goblin:goblinWindow.2 "cd apps/desktop" Enter
 tmux send-keys -t goblin:goblinWindow.2 "npm install" Enter
 tmux send-keys -t goblin:goblinWindow.2 'export OPENAI_API_KEY=$(op read "op://Coding/openai-api-key/credential")' Enter
 tmux send-keys -t goblin:goblinWindow.2 'export TAVILY_API_KEY=$(op read "op://Coding/tavily-api-key/credential")' Enter
-tmux send-keys -t goblin:goblinWindow.2 "npm run start" Enter
+tmux send-keys -t goblin:goblinWindow.2 "npm run dev" Enter
 
 tmux select-pane -t goblin:goblinWindow.0
 tmux attach -t goblin:goblinWindow
