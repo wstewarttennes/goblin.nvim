@@ -1,77 +1,11 @@
+import { MessageHandler } from './src/services/rendererMessageHandler.js';
+
 // Define backend URL based on environment
 const isDev = window.electron?.env?.NODE_ENV === 'development';
 const BACKEND_URL = isDev 
   ? 'ws://localhost:8011' 
   : 'wss://api.hellogobl.in';
 
-class MessageHandler {
-    constructor() {
-        this.chatContainer = document.getElementById('chat-container');
-        this.currentMessageDiv = null;
-    }
-
-    displayUserMessage(message) {
-        const messageDiv = document.createElement('div');
-        messageDiv.classList.add('message', 'user-message');
-        messageDiv.textContent = message;
-        this.chatContainer?.appendChild(messageDiv);
-        this.scrollToBottom();
-    }
-
-    handleStreamingMessage(data) {
-        if (!this.currentMessageDiv && !data.is_complete) {
-            this.currentMessageDiv = document.createElement('div');
-            this.currentMessageDiv.classList.add('message', 'assistant-message');
-            this.chatContainer?.appendChild(this.currentMessageDiv);
-        }
-
-        if (!data.is_complete) {
-            const formattedContent = this.formatText(data.message);
-            if (this.currentMessageDiv) {
-                this.currentMessageDiv.textContent += formattedContent;
-            }
-            this.scrollToBottom();
-        } else if (this.currentMessageDiv) {
-            this.formatCodeBlocks(this.currentMessageDiv);
-            this.currentMessageDiv = null;
-        }
-    }
-
-    formatText(text) {
-        return text;
-    }
-
-    formatCodeBlocks(messageDiv) {
-        const text = messageDiv.textContent;
-        if (text.includes('```')) {
-            const formattedHtml = text.replace(
-                /```([\s\S]*?)```/g,
-                (match, code) => `<pre><code>${this.escapeHtml(code.trim())}</code></pre>`
-            );
-            messageDiv.innerHTML = formattedHtml;
-        }
-    }
-
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    scrollToBottom() {
-        if (this.chatContainer) {
-            this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
-        }
-    }
-
-    displayErrorMessage(error) {
-        const errorDiv = document.createElement('div');
-        errorDiv.classList.add('message', 'system-message');
-        errorDiv.textContent = typeof error === 'string' ? error : error.message;
-        this.chatContainer?.appendChild(errorDiv);
-        this.scrollToBottom();
-    }
-}
 
 class WebSocketManager {
     constructor(settingsManager) {

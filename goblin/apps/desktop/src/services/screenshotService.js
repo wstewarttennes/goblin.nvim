@@ -1,5 +1,8 @@
 // screenshotService.js
 const { desktopCapturer } = require('electron');
+const MainMessageHandler = require('./mainMessageHandler');
+
+
 const WebSocket = require('ws');
 
 class ScreenshotService {
@@ -12,11 +15,15 @@ class ScreenshotService {
     this.maxReconnectAttempts = 5;
     this.currentProject = null;
     this.isCapturing = false;
-    this.frequency = 5; // Default frequency in seconds
-
+    this.frequency = 60; // Default frequency in seconds
+    this.messageHandler = new MainMessageHandler()
     
     // Connect immediately
     this.connect();
+  }
+
+  setMainWindow(window) {
+      this.messageHandler.setMainWindow(window);
   }
 
   connect() {
@@ -47,19 +54,44 @@ class ScreenshotService {
       });
 
       this.ws.on('message', (data) => {
-        try {
-          const message = JSON.parse(data);
-          if (message.type === 'screenshot_analysis') {
-            console.log('Received screenshot analysis:', message.analysis);
+          try {
+              const message = JSON.parse(data);
+              if (message.type === 'screenshot_analysis') {
+                  console.log('Received screenshot analysis:', message.analysis);
+                  this.handleMessage(message);
+              }
+          } catch (error) {
+              console.error('Error parsing screenshot message:', error);
+              this.messageHandler.displayErrorMessage('Error processing screenshot analysis');
           }
-        } catch (error) {
-          console.error('Error parsing screenshot message:', error);
-        }
       });
     } catch (error) {
       console.error('Error creating screenshot WebSocket:', error);
       this.handleReconnect();
     }
+  }
+
+  handleMessage(data) {
+      switch (data.type) {
+          case 'screenshot_analysis':
+              this.messageHandler.handleStreamingMessage({
+                  type: 'chat_message_chunk',
+                  message: data.analysis,
+                  is_complete: false
+              });
+              // Send a final message to mark completion
+              setTimeout(() => {
+                  this.messageHandler.handleStreamingMessage({
+                      type: 'chat_message_chunk',
+                      message: '',
+                      is_complete: true
+                  });
+              }, 100);
+              break;
+          case 'error':
+              this.messageHandler.displayErrorMessage(data.message);
+              break;
+      }
   }
 
   handleReconnect() {

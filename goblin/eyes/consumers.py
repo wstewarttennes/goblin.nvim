@@ -51,28 +51,41 @@ class ScreenshotConsumer(AsyncWebsocketConsumer):
                 timestamp = data['timestamp']
                 project = data.get('project', 'default')
                 
-                # Remove the data URL prefix to get just the base64 data
-                base64_data = screenshot_data.split(',')[1]
-                
-                # Log processing stages
-                logger.info(f"Processing screenshot for project {project}")
-                
-                # Convert base64 to image
-                image_data = base64.b64decode(base64_data)
-                image = Image.open(BytesIO(image_data))
-                logger.info(f"Image processed. Size: {image.size}")
-                
-                # Analyze the screenshot with Claude
-                # analysis_result = await self.analyze_screenshot(image, timestamp, project)
-                
-                # Send back the analysis
-                await self.send(json.dumps({
-                    'type': 'screenshot_analysis',
-                    'analysis': "test" , # analysis_result
-                    'timestamp': timestamp,
-                    'project': project
-                }))
-                logger.info(f"Analysis sent back for screenshot at {timestamp}")
+                try:
+                    # Remove the data URL prefix to get just the base64 data
+                    if ',' in screenshot_data:
+                        base64_data = screenshot_data.split(',')[1]
+                    else:
+                        base64_data = screenshot_data
+                    
+                    # Log processing stages
+                    logger.info(f"Processing screenshot for project {project}")
+                    
+                    # Convert base64 to image
+                    image_data = base64.b64decode(base64_data)
+                    image = Image.open(BytesIO(image_data))
+                    
+                    # Log the image size
+                    logger.info(f"Image processed. Size: {image.size}")
+                    
+                    # Analyze the screenshot with Claude
+                    analysis_result = await self.analyze_screenshot(image, timestamp, project)
+                    
+                    # Send back the analysis
+                    await self.send(json.dumps({
+                        'type': 'screenshot_analysis',
+                        'analysis': analysis_result,
+                        'timestamp': timestamp,
+                        'project': project
+                    }))
+                    logger.info(f"Analysis sent back for screenshot at {timestamp}")
+                    
+                except Exception as e:
+                    logger.error(f"Error processing screenshot: {str(e)}", exc_info=True)
+                    await self.send(json.dumps({
+                        'type': 'error',
+                        'message': f"Error processing screenshot: {str(e)}"
+                    }))
                 
         except Exception as e:
             logger.error(f"Error processing message: {str(e)}", exc_info=True)
@@ -84,27 +97,40 @@ class ScreenshotConsumer(AsyncWebsocketConsumer):
     async def analyze_screenshot(self, image, timestamp, project):
         """Analyze screenshot using Claude"""
         try:
+            print("Analyzing screenshot")
             # Convert image to base64 for Claude
             buffered = BytesIO()
             image.save(buffered, format="JPEG")
-            img_str = base64.b64encode(buffered.getvalue()).decode()
+
+            img_base64 = base64.b64encode(buffered.getvalue()).decode()
             
             # Create message for Claude with the image and project context
             messages = [
                 HumanMessage(content=[
                     {
                         "type": "text",
-                        "text": f"Please analyze this screenshot from project '{project}' and provide insights about the content. Look for any important information, text, or visual elements that might be relevant to the {project} project."
+                        "text": f"""
+                            Please look at this screenshot for and provide insights about the content. 
+                            Look for any important information, text, or visual elements.
+                            Make note of any glaring mistakes you see, whether that be code or something else.
+                            Keep responses short and to the point as if you're texting a friend.
+                            {'Project: ' + project if project else ""}
+                        """
                     },
                     {
                         "type": "image",
-                        "image": img_str
+                        "source": {  
+                            "type": "base64",
+                            "media_type": "image/jpeg",
+                            "data": img_base64
+                        }
                     }
                 ])
             ]
             
             # Get Claude's analysis
             response = await self.claude_client.ainvoke(messages)
+            print('got a response')
             return response.content
             
         except Exception as e:

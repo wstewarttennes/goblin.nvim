@@ -22,7 +22,13 @@ contextBridge.exposeInMainWorld(
             if (validChannels.includes(channel)) {
                 ipcRenderer.on(channel, (event, ...args) => func(...args));
             }
-        }
+        },
+        onScreenshotAnalysis: (callback) => {
+            ipcRenderer.on('screenshot:analysis', (event, data) => callback(data));
+        },
+        onScreenshotError: (callback) => {
+            ipcRenderer.on('screenshot:error', (event, data) => callback(data));
+        },
     }
 );
 

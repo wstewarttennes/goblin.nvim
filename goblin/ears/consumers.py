@@ -226,18 +226,38 @@ class ChatConsumer(AsyncWebsocketConsumer):
             logger.error(f"Connection error: {str(e)}")
             await self.close()
 
+
     async def receive(self, text_data):
         """Handle incoming messages"""
         try:
             data = json.loads(text_data)
             message = data['message']
+            project = data['project']
+            provider = data['provider']
+            print(provider)
+            print(project)
+            print(message)
+
+            if provider.lower() == "anthropic":
+                self.provider = anthropic.AnthropicProvider()
+            elif provider.lower() == "openai":
+                self.provider = openai.OpenAIProvider()
+            elif provider.lower() == "llama":
+                self.provider = llama.LlamaProvider()
+            else:
+                raise ValueError(f"Unsupported provider: {provider}")
             
             # Initialize state with system prompt
-            system_prompt = """You are an AI assistant named GOBLIN. You have many tools to use. 
+            system_prompt = f"""
+                You are an AI assistant named GOBLIN. You have many tools to use. 
+                Your current provider is {provider}.
+                Your current project is {project}
 
-            Your current tool list is 
+            Your current tool list is:
 
-            with access to tools for analyzing food vendor data...
+            City Flavor Analysis: access to tools for analyzing food vendor data on the City Flavor platform
+
+
 
             """
             

@@ -39,7 +39,9 @@ const windowConfig = {
 function initScreenshotService() {
     if (!screenshotService) {
         screenshotService = new ScreenshotService(`${BACKEND_URL}/ws/eyes/screenshots`);
-        console.log('Screenshot service initialized');
+        if (mainWindow) {
+            screenshotService.setMainWindow(mainWindow);
+        }
     }
 }
 
@@ -147,6 +149,10 @@ function createWindow() {
     mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
         console.error('Failed to load:', errorCode, errorDescription);
     });
+
+    if (screenshotService) {
+        screenshotService.setMainWindow(mainWindow);
+    }
 
 }
 

@@ -2,17 +2,10 @@
 
 Goblin is a task execution system that injests data from various sources and executes tasks, both in real-time and async.
 
-Goblin receives information via the **ears** application.
-Goblin 
+Goblin receives audio and text information from users via the **ears** application.
 
+Goblin is broken into separate apps based on functions: brain, eyes, ears, mouth, legs, nose, arms, etc.
 
-
-
-
-a helpful assistant who solves complex problems, continues to learn and adjust processes (and even it's own code) over time, and 
-has the ability to mimic most human functions (brain, eyes, ears, mouth, etc.). 
-
-Goblin is broken into separate apps based on bodily functions: brain, eyes, ears, mouth, legs, nose, arms. 
 Below we break down these various functions and how they interact with each other.
 
 ## Brain
@@ -28,12 +21,11 @@ The Eyes allow for processing visual information, adding in additional context, 
 ## Mouth
 The Mouth allows for speech. Typically this involves passing text from various other parts of Goblin to the Mouth which handles output.
 
-## Arms
+## Arms (TBD)
 Arms allow for Goblin to control physical robots. Because of the safety concerns here the Arms library also adds in safety layers to protect the user (both intentionally malicious or accidentally malicious).
 
-
-
 ## Legs (TBD)
+
 ## Nose (TBD)
 
 
