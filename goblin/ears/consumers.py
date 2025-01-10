@@ -26,33 +26,39 @@ LANGCHAIN_PROJECT = "cityflavor-analysis"
 
 logger = logging.getLogger(__name__)
 
+
 class AnalyzeDataSchema(BaseModel):
     """Schema for the analyze_data tool arguments"""
+
     query_description: str
+
 
 class AgentState(TypedDict):
     """Type definition for the agent's state"""
+
     messages: Sequence[Any]
     tool_calls: List[Dict[str, Any]]
     next_step: Optional[str]
 
+
 class ToolRegistry:
     """Registry for managing tools with LangChain integration"""
+
     def __init__(self):
         self._tools = {}
-    
-    def register_tool(self, name: str, func, description: str, args_schema: type[BaseModel]):
+
+    def register_tool(
+        self, name: str, func, description: str, args_schema: type[BaseModel]
+    ):
         """Register a tool using LangChain's StructuredTool"""
         self._tools[name] = StructuredTool.from_function(
-            func=func,
-            name=name,
-            description=description,
-            args_schema=args_schema
+            func=func, name=name, description=description, args_schema=args_schema
         )
-    
+
     def get_tools(self) -> List[StructuredTool]:
         """Get all registered tools"""
         return list(self._tools.values())
+
 
 class ChatConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
@@ -76,8 +82,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             # Create and compile the workflow
             with trace(
-                name="Graph Initialization",
-                project_name=LANGCHAIN_PROJECT
+                name="Graph Initialization", project_name=LANGCHAIN_PROJECT
             ) as tracer:
                 graph = self._create_graph()
                 if graph is None:
@@ -99,8 +104,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
         """Create the LangGraph workflow"""
         try:
             logger.info("Starting graph creation...")
-            
-            if not hasattr(self, 'provider') or self.provider is None:
+
+            if not hasattr(self, "provider") or self.provider is None:
                 raise ValueError("AI provider not properly initialized")
 
             graph = StateGraph(AgentState)
@@ -108,8 +113,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             try:
                 # Update the system prompt to be more explicit about tool usage
-                prompt = ChatPromptTemplate.from_messages([
-                    ("system", """You are an AI assistant with DIRECT access to a food vendor database through the analyze_city_flavor_data tool.
+                prompt = ChatPromptTemplate.from_messages(
+                    [
+                        (
+                            "system",
+                            """You are an AI assistant with DIRECT access to a food vendor database through the analyze_city_flavor_data tool.
 
                     CRITICAL INSTRUCTIONS:
                     1. You MUST use the analyze_city_flavor_data tool for EVERY data-related question
@@ -129,9 +137,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     1. Always explain the data in clear, natural language
                     2. Highlight key metrics and trends
                     3. Offer to analyze additional aspects if relevant
-                    """),
-                    MessagesPlaceholder(variable_name="messages")
-                ])                
+                    """,
+                        ),
+                        MessagesPlaceholder(variable_name="messages"),
+                    ]
+                )
                 logger.info("Prompt template created successfully")
             except Exception as e:
                 logger.error(f"Failed to create prompt template: {str(e)}")
@@ -141,61 +151,96 @@ class ChatConsumer(AsyncWebsocketConsumer):
             async def process_message(state: AgentState) -> AgentState:
                 """Process message node with tracing"""
                 with trace(
-                    name="Process Message Node",
-                    project_name=LANGCHAIN_PROJECT
+                    name="Process Message Node", project_name=LANGCHAIN_PROJECT
                 ) as node_tracer:
                     try:
                         # Analyze the input to ensure we're using the tool
                         user_message = state["messages"][-1].content
-                        if any(keyword in user_message.lower() for keyword in ['sales', 'revenue', 'orders', 'metrics', 'trends', 'performance']):
+                        if any(
+                            keyword in user_message.lower()
+                            for keyword in [
+                                "sales",
+                                "revenue",
+                                "orders",
+                                "metrics",
+                                "trends",
+                                "performance",
+                            ]
+                        ):
                             # Format tool call if not already formatted
-                            if not '<tool>' in user_message:
+                            if not "<tool>" in user_message:
                                 formatted_query = f'<tool>analyze_city_flavor_data("{user_message}")</tool>'
-                                state["messages"].append(HumanMessage(content=formatted_query))
+                                state["messages"].append(
+                                    HumanMessage(content=formatted_query)
+                                )
 
                         # Build complete response from stream
                         response_content = ""
-                        async for chunk in self.provider.generate_response_stream(state["messages"]):
+                        async for chunk in self.provider.generate_response_stream(
+                            state["messages"]
+                        ):
                             response_content += chunk
-                            await self.send(json.dumps({
-                                'type': 'chat_message_chunk',
-                                'message': chunk,
-                                'is_complete': False
-                            }))
+                            await self.send(
+                                json.dumps(
+                                    {
+                                        "type": "chat_message_chunk",
+                                        "message": chunk,
+                                        "is_complete": False,
+                                    }
+                                )
+                            )
 
                         state["messages"].append(AIMessage(content=response_content))
 
                         # Check for tool calls
-                        tool_match = re.search(r'<tool>(.*?)\((.*?)\)</tool>', response_content)
+                        tool_match = re.search(
+                            r"<tool>(.*?)\((.*?)\)</tool>", response_content
+                        )
                         if tool_match:
                             tool_name = tool_match.group(1)
-                            tool_args = {"query_description": tool_match.group(2).strip('"\'')}
-                            
+                            tool_args = {
+                                "query_description": tool_match.group(2).strip("\"'")
+                            }
+
                             with trace(
                                 name="Tool Execution",
                                 project_name=LANGCHAIN_PROJECT,
-                                metadata={"tool_name": tool_name}
+                                metadata={"tool_name": tool_name},
                             ):
-                                result = await self._handle_city_flavor_data_analysis(**tool_args)
+                                result = await self._handle_city_flavor_data_analysis(
+                                    **tool_args
+                                )
                                 state["messages"].append(
                                     HumanMessage(content=f"Tool result: {str(result)}")
                                 )
-                                
+
                                 # Get final response with streaming
                                 final_content = ""
-                                async for chunk in self.provider.generate_response_stream(state["messages"]):
+                                async for (
+                                    chunk
+                                ) in self.provider.generate_response_stream(
+                                    state["messages"]
+                                ):
                                     final_content += chunk
-                                    await self.send(json.dumps({
-                                        'type': 'chat_message_chunk',
-                                        'message': chunk,
-                                        'is_complete': False
-                                    }))
-                                state["messages"].append(AIMessage(content=final_content))
+                                    await self.send(
+                                        json.dumps(
+                                            {
+                                                "type": "chat_message_chunk",
+                                                "message": chunk,
+                                                "is_complete": False,
+                                            }
+                                        )
+                                    )
+                                state["messages"].append(
+                                    AIMessage(content=final_content)
+                                )
 
                         return state
-                        
+
                     except Exception as e:
-                        logger.error(f"Error in process_message: {str(e)}", exc_info=True)
+                        logger.error(
+                            f"Error in process_message: {str(e)}", exc_info=True
+                        )
                         state["messages"].append(AIMessage(content=f"Error: {str(e)}"))
                         return state
 
@@ -218,22 +263,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
         try:
             await database_sync_to_async(self.test_db_connection)()
             await self.accept()
-            await self.send(json.dumps({
-                'type': 'connection_status',
-                'status': 'connected'
-            }))
+            await self.send(
+                json.dumps({"type": "connection_status", "status": "connected"})
+            )
         except Exception as e:
             logger.error(f"Connection error: {str(e)}")
             await self.close()
-
 
     async def receive(self, text_data):
         """Handle incoming messages"""
         try:
             data = json.loads(text_data)
-            message = data['message']
-            project = data['project']
-            provider = data['provider']
+            message = data["message"]
+            project = data["project"]
+            provider = data["provider"]
             print(provider)
             print(project)
             print(message)
@@ -246,7 +289,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 self.provider = llama.LlamaProvider()
             else:
                 raise ValueError(f"Unsupported provider: {provider}")
-            
+
             # Initialize state with system prompt
             system_prompt = f"""
                 You are an AI assistant named GOBLIN. You have many tools to use. 
@@ -258,16 +301,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
             City Flavor Analysis: access to tools for analyzing food vendor data on the City Flavor platform
 
 
-
             """
-            
+
             state = AgentState(
                 messages=[
                     HumanMessage(content=system_prompt),
-                    HumanMessage(content=message)
+                    HumanMessage(content=message),
                 ],
                 tool_calls=[],
-                next_step="process_message"
+                next_step="process_message",
             )
 
             with trace(
@@ -275,33 +317,28 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 project_name=LANGCHAIN_PROJECT,
                 metadata={
                     "channel_name": self.channel_name,
-                    "message_type": "user_input"
-                }
+                    "message_type": "user_input",
+                },
             ) as conversation_tracer:
                 final_state = await self.app.ainvoke(
                     state,
                     config={
                         "recursion_limit": 10,
-                        "metadata": {
-                            "session_id": self.channel_name
-                        }
-                    }
+                        "metadata": {"session_id": self.channel_name},
+                    },
                 )
 
             # Send completion message
-            await self.send(json.dumps({
-                'type': 'chat_message_chunk',
-                'message': '',
-                'is_complete': True
-            }))
-                    
+            await self.send(
+                json.dumps(
+                    {"type": "chat_message_chunk", "message": "", "is_complete": True}
+                )
+            )
+
         except Exception as e:
             logger.error("Message processing error", exc_info=True)
             logger.error(str(e), exc_info=True)
-            await self.send(json.dumps({
-                'type': 'error',
-                'message': str(e)
-            }))
+            await self.send(json.dumps({"type": "error", "message": str(e)}))
 
     def _register_default_tools(self):
         """Register default tools"""
@@ -317,39 +354,41 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 - Locations: View activity trends
                 - Shifts: Check schedules and metrics
                 """,
-                args_schema=AnalyzeDataSchema
+                args_schema=AnalyzeDataSchema,
             )
             logger.info("Tool 'analyze_city_flavor_data' registered successfully")
         except Exception as e:
             logger.error(f"Error registering tools: {str(e)}", exc_info=True)
 
-    async def _handle_city_flavor_data_analysis(self, query_description: str) -> Dict[str, Any]:
+    async def _handle_city_flavor_data_analysis(
+        self, query_description: str
+    ) -> Dict[str, Any]:
         """Handler for analyzing city flavor data"""
         with trace(
             name="City Flavor Analysis",
             project_name=LANGCHAIN_PROJECT,
-            metadata={"query": query_description}
+            metadata={"query": query_description},
         ) as analysis_tracer:
             try:
                 db_manager = DatabaseManager()
                 city_flavor_query_tool = CityFlavorQueryTool(db_manager)
                 results = await city_flavor_query_tool.analyze_data(query_description)
-        
-                if results['status'] == 'success':
+
+                if results["status"] == "success":
                     return {
-                        'status': 'success',
-                        'data': results.get('data', []),
-                        'summary': results.get('summary', {}),
-                        'message': 'Analysis completed successfully'
+                        "status": "success",
+                        "data": results.get("data", []),
+                        "summary": results.get("summary", {}),
+                        "message": "Analysis completed successfully",
                     }
                 else:
                     return {
-                        'status': 'error',
-                        'message': results.get('message', 'Unknown error')
+                        "status": "error",
+                        "message": results.get("message", "Unknown error"),
                     }
             except Exception as e:
                 logger.error("Analysis error", exc_info=True)
-                return {'status': 'error', 'message': str(e)}
+                return {"status": "error", "message": str(e)}
 
     def test_db_connection(self):
         """Test database connection"""
